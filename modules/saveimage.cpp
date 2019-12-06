@@ -2,6 +2,7 @@
 #include "socket.h"
 #include "url.h"
 #include <fcntl.h>
+#include <stdlib.h>
  
 /* 解析href的正则表达式 */
 static const char * IMG_PATTERN = "<img [^>]*src=\"\\s*\\([^ >\"]*\\)\\s*\"";

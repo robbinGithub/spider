@@ -42,6 +42,11 @@ int main(int argc, void *argv[])
     char ch;
 
     /* 解析命令行参数 */
+    // argv类型: 二级指针：指向 char* const 类型的指针 
+    // char * const  一级指针(指针常量) 不可以修改
+    // char * const * argv 解释 argv是指向char*类型的指针, char* 有const修饰，所以char*一级指针不能修改
+    // 作用：argv指向的一级指针是常量指针，不能修改
+    // @see https://blog.51cto.com/iamokay/2426525
     while ((ch = getopt(argc, (char* const*)argv, "vhd")) != -1) {
         switch(ch) {
             case 'v':
@@ -94,6 +99,7 @@ int main(int argc, void *argv[])
     chdir("download"); 
 
     /* 启动用于解析DNS的线程 */
+    // DNS线程任务：读取SURL队列，解析SURL地址，生成OURL对象并放入OURL队列
     int err = -1;
     if ((err = create_thread(urlparser, NULL, NULL, NULL)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "Create urlparser thread fail: %s", strerror(err));
@@ -117,7 +123,8 @@ int main(int argc, void *argv[])
     /* begin create epoll to run */
     int ourl_num = 0;
     g_epfd = epoll_create(g_conf->max_job_num);
-
+    
+    // 根据设定的并发job数量，创建等量的epoll任务,也就是请求
     while(ourl_num++ < g_conf->max_job_num) {
         if (attach_epoll_task() < 0)
             break;
@@ -131,7 +138,8 @@ int main(int argc, void *argv[])
         if (n == -1)
             printf("epoll errno:%s\n",strerror(errno));
         fflush(stdout);
-
+        
+	// 没有网络数据，检查线程和OURL队列是否为空，如果为空，则判定任务结束了
         if (n <= 0) {
             if (g_cur_thread_num <= 0 && is_ourlqueue_empty() && is_surlqueue_empty()) {
                 sleep(1);
@@ -154,6 +162,7 @@ int main(int argc, void *argv[])
 
             printf("hello epoll:event=%d\n",events[i].events);
             fflush(stdout);
+	    //创建新线程处理请求响应的数据
             create_thread(recv_response, arg, NULL, NULL);
         }
     }

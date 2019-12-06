@@ -8,6 +8,7 @@
 #include "threads.h"
 #include "confparser.h"
 #include "dso.h"
+#include <stdlib.h>
 
 /* macros */
 #define MAX_MESG_LEN   1024
@@ -17,6 +18,7 @@
 #define SPIDER_LEVEL_WARN  2
 #define SPIDER_LEVEL_ERROR 3
 #define SPIDER_LEVEL_CRIT  4 
+
 
 static const char * LOG_STR[] = { 
     "DEBUG",

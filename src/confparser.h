@@ -8,7 +8,7 @@ using namespace std;
 #define CONF_FILE     "spider.conf"
 
 /* see the spiderq.conf to get meaning for each member variable below */
-typedef struct Config {
+struct Config {
     int              max_job_num;
     char            *seeds;
     char            *include_prefixes; 

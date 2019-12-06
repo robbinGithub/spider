@@ -1,7 +1,8 @@
 #include "dso.h"
 #include "socket.h"
 #include <fcntl.h>
- 
+#include <stdlib.h>
+
 static int handler(void * data) {
     Response *r = (Response *)data;
     

@@ -7,7 +7,10 @@
 #include "threads.h"
 #include "qstring.h"
 #include "dso.h"
- 
+#include <stdlib.h>
+
+//声明静态函数：这3个函数不会在别的地方被引用, 如果会在别的地方引用用extra
+
 /* regex pattern for parsing href */
 static const char * HREF_PATTERN = "href=\"\\s*\\([^ >\"]*\\)\\s*\"";
 
@@ -94,23 +97,31 @@ void * recv_response(void * arg)
     int i, n, trunc_head = 0, len = 0;
     char * body_ptr = NULL;
     evso_arg * narg = (evso_arg *)arg;
+
+    // 创建Response对象，用于接收数据
     Response *resp = (Response *)malloc(sizeof(Response));
     resp->header = NULL;
-    resp->body = (char *)malloc(HTML_MAXLEN);
+    resp->body = (char *)malloc(HTML_MAXLEN); // 这个地方要根据接收内容动态变化
     resp->body_len = 0;
     resp->url = narg->url;
-
+   
+    // 初始化并编译正则
     regex_t re;
     if (regcomp(&re, HREF_PATTERN, 0) != 0) {/* compile error */
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "compile regex error");
     }
 
     SPIDER_LOG(SPIDER_LEVEL_INFO, "Crawling url: %s/%s", narg->url->domain, narg->url->path);
-
+    
+    // 循环读取数据，直到把数据读取完毕
     while(1) {
         /* what if content-length exceeds HTML_MAXLEN? */
         n = read(narg->fd, resp->body + len, 1024);
         if (n < 0) {
+	    
+	    // EINTR 系统调用被信号中断，转而去执行了signal_handler
+	    // EAGAIN 非阻塞的系统调用，由于资源限制/不满足条件，导致返回值为EAGAIN
+	    // EWOULDBLOCK 其他系统中会出现，同EAGAIN
             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) { 
                 /**
                  * TODO: Why always recv EAGAIN?
@@ -140,7 +151,8 @@ void * recv_response(void * arg)
             //SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket ok! len=%d", n);
             len += n;
             resp->body[len] = '\0';
-
+            
+	    // truncate http header部分
             if (!trunc_head) {
                 if ((body_ptr = strstr(resp->body, "\r\n\r\n")) != NULL) {
                     *(body_ptr+2) = '\0';
@@ -189,16 +201,21 @@ static int header_postcheck(Header *header)
     return 1;
 }
 
+// 解析HTTP响应头
 static Header * parse_header(char *header)
 {
     int c = 0;
+    
+    // 临时指针变量
     char *p = NULL;
     char **sps = NULL;
+    // 响应头信息处理指针,标记上次处理位置
     char *start = header;
     Header *h = (Header *)calloc(1, sizeof(Header));
-
+     
     if ((p = strstr(start, "\r\n")) != NULL) {
         *p = '\0';
+	// strsplit返回的是二级指针，被调函数内部分配内存, 调用方使用后，没有释放内存，内存泄露？
         sps = strsplit(start, ' ', &c, 2);
         if (c == 3) {
             h->status_code = atoi(sps[1]);
@@ -213,10 +230,11 @@ static Header * parse_header(char *header)
         sps = strsplit(start, ':', &c, 1);
         if (c == 2) {
             if (strcasecmp(sps[0], "content-type") == 0) {
-                h->content_type = strdup(strim(sps[1]));
+                h->content_type = strdup(strim(sps[1])); // 通过strdup，不共享内存,重新分配内存空间
             }
         }
         start = p + 2;
     }
+ 
     return h;
 }

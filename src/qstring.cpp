@@ -52,6 +52,7 @@ char * strim(char *str)
     return sp;
 }
 
+// 字符串切割
 char ** strsplit(char *line, char delimeter, int *count, int limit)
 {
     char *ptr = NULL, *str = line;
@@ -64,8 +65,9 @@ char ** strsplit(char *line, char delimeter, int *count, int limit)
         vector[*count] = strim(str);
         str = ptr+1;
         (*count)++;	
-        if (--limit == 0) break;
+        if (--limit == 0) break;// ++和--优先级比==高
     }
+    // last one
     if (*str != '\0') {
         vector = (char **)realloc(vector,((*count)+1)*sizeof(char *));
         vector[*count] = strim(str);
